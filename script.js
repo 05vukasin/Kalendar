@@ -23,18 +23,18 @@ let month = today.getMonth();
 let year = today.getFullYear();
 
 const months = [
-  "January",
-  "February",
-  "March",
+  "Januar",
+  "Februar",
+  "Mart",
   "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "Maj",
+  "Jun",
+  "Jul",
+  "Avgust",
+  "Septembar",
+  "Oktobar",
+  "Novembar",
+  "Decembar",
 ];
 
 // const eventsArr = [
@@ -231,42 +231,74 @@ function gotoDate() {
 
 //function get active day day name and date and update eventday eventdate
 function getActiveDay(date) {
+  const dayNames = ["Ned", "Pon", "Uto", "Sre", "Čet", "Pet", "Sub"]; // Skraćeni nazivi dana na srpskom
   const day = new Date(year, month, date);
-  const dayName = day.toString().split(" ")[0];
+  const dayIndex = day.getDay(); // getDay vraća indeks dana u nedelji (0 = Nedelja, 1 = Ponedeljak...)
+  
+  const dayName = dayNames[dayIndex]; // Izvlačimo naziv dana iz niza
+
   eventDay.innerHTML = dayName;
   eventDate.innerHTML = date + " " + months[month] + " " + year;
 }
 
-//function update events when a day is active
-function updateEvents(date) {
+
+// function update events when a day is active
+async function updateEvents(date) {
   let events = "";
-  eventsArr.forEach((event) => {
-    if (
-      date === event.day &&
-      month + 1 === event.month &&
-      year === event.year
-    ) {
-      event.events.forEach((event) => {
-        events += `<div class="event">
+  
+  try {
+    // API poziv za preuzimanje aktivnih rezervacija
+    const response = await fetch(
+      "https://rezervacijeapi.azurewebsites.net/api/restaurant/4/activeReservations"
+    );
+    if (!response.ok) {
+      throw new Error("Greška prilikom preuzimanja rezervacija.");
+    }
+
+    const reservations = await response.json();
+
+    // Prolazimo kroz sve rezervacije i prikazujemo samo one koje su za izabrani datum
+    reservations.forEach((reservation) => {
+      const reservationDate = new Date(reservation.datumRezervacije).getDate();
+      const reservationMonth = new Date(reservation.datumRezervacije).getMonth();
+      const reservationYear = new Date(reservation.datumRezervacije).getFullYear();
+      
+      // Upoređujemo datum rezervacije sa aktivnim danom, mesecom i godinom
+      if (
+        date === reservationDate &&
+        month === reservationMonth &&
+        year === reservationYear
+      ) {
+        events += `
+          <div class="event">
             <div class="title">
               <i class="fas fa-circle"></i>
-              <h3 class="event-title">${event.title}</h3>
+              <h3 class="event-title">${reservation.komentar || "Rezervacija bez komentara"}</h3>
             </div>
             <div class="event-time">
-              <span class="event-time">${event.time}</span>
+              <span class="event-time">Datum: ${new Date(reservation.datumRezervacije).toLocaleDateString("sr-RS")}</span><br>
+              <span class="event-time">Broj osoba: ${reservation.brojOsoba}</span><br>
+              <span class="event-time">Klijent: ${reservation.klijent.ime} ${reservation.klijent.prezime || ""}</span><br>
+              <span class="event-time">Telefon: ${reservation.klijent.telefon}</span>
             </div>
-        </div>`;
-      });
+          </div>`;
+      }
+    });
+
+    if (events === "") {
+      events = `<div class="no-event"><h3>Nema Rezervacija</h3></div>`;
     }
-  });
-  if (events === "") {
-    events = `<div class="no-event">
-            <h3>No Events</h3>
-        </div>`;
+
+    eventsContainer.innerHTML = events;
+
+  } catch (error) {
+    console.error("Greška:", error);
+    eventsContainer.innerHTML = `<div class="no-event"><h3>Greška prilikom preuzimanja rezervacija</h3></div>`;
   }
-  eventsContainer.innerHTML = events;
+
   saveEvents();
 }
+
 
 //function to add event
 addEventBtn.addEventListener("click", () => {
@@ -288,25 +320,7 @@ addEventTitle.addEventListener("input", (e) => {
   addEventTitle.value = addEventTitle.value.slice(0, 60);
 });
 
-function defineProperty() {
-  var osccred = document.createElement("div");
-  osccred.innerHTML =
-    "A Project By <a href='https://www.youtube.com/channel/UCiUtBDVaSmMGKxg1HYeK-BQ' target=_blank>Open Source Coding</a>";
-  osccred.style.position = "absolute";
-  osccred.style.bottom = "0";
-  osccred.style.right = "0";
-  osccred.style.fontSize = "10px";
-  osccred.style.color = "#ccc";
-  osccred.style.fontFamily = "sans-serif";
-  osccred.style.padding = "5px";
-  osccred.style.background = "#fff";
-  osccred.style.borderTopLeftRadius = "5px";
-  osccred.style.borderBottomRightRadius = "5px";
-  osccred.style.boxShadow = "0 0 5px #ccc";
-  document.body.appendChild(osccred);
-}
 
-defineProperty();
 
 //allow only time in eventtime from and to
 addEventFrom.addEventListener("input", (e) => {
@@ -335,7 +349,7 @@ addEventSubmit.addEventListener("click", () => {
   const eventTimeFrom = addEventFrom.value;
   const eventTimeTo = addEventTo.value;
   if (eventTitle === "" || eventTimeFrom === "" || eventTimeTo === "") {
-    alert("Please fill all the fields");
+    alert("Molimo popunite sva polja");
     return;
   }
 
@@ -350,7 +364,7 @@ addEventSubmit.addEventListener("click", () => {
     timeToArr[0] > 23 ||
     timeToArr[1] > 59
   ) {
-    alert("Invalid Time Format");
+    alert("Pogrešan vremenski format");
     return;
   }
 
@@ -373,7 +387,7 @@ addEventSubmit.addEventListener("click", () => {
     }
   });
   if (eventExist) {
-    alert("Event already added");
+    alert("Već postoji reyervacija");
     return;
   }
   const newEvent = {
@@ -421,7 +435,7 @@ addEventSubmit.addEventListener("click", () => {
 //function to delete event when clicked on event
 eventsContainer.addEventListener("click", (e) => {
   if (e.target.classList.contains("event")) {
-    if (confirm("Are you sure you want to delete this event?")) {
+    if (confirm("Da li ste sigurni da želite da obrišete?")) {
       const eventTitle = e.target.children[0].children[1].innerHTML;
       eventsArr.forEach((event) => {
         if (
